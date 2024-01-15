@@ -1,133 +1,38 @@
-# README for TinyURL Project
+# TinyURL Project Summary
 
-This project demonstrates the implementation of a URL shortening service (TinyURL) using Spring Boot, Redis, MongoDB, and Cassandra. The system is designed to generate short URLs, store them in Redis, log analytics in MongoDB, and record user clicks in Cassandra.
+The TinyURL project is a comprehensive demonstration of a URL shortening service implemented with Spring Boot, Redis, MongoDB, and Cassandra. The system enables the generation of short URLs, their storage in Redis, analytics logging in MongoDB, and user click tracking in Cassandra.
 
-## Setup
+## Key Components
 
-### 1. Hosts Configuration
+### 1. Swagger Documentation
 
-Edit the `/etc/hosts` file to include the following entries:
+Integrates Swagger for API documentation, allowing easy exploration of available endpoints and functionalities.
 
-```bash
-sudo vi /etc/hosts
+### 2. Redis Integration
 
-127.0.0.1 cassandra
-127.0.0.1 redis
-127.0.0.1 mongo
-```
+Utilizes Redis as a fast and efficient in-memory data store for managing short URLs and related data.
 
-### 2. Swagger Configuration
+### 3. MongoDB Analytics Logging
 
-Update the `pom.xml` file to use Swagger version 2.5.2:
+Logs analytics data in MongoDB, providing insights into URL usage and user interactions with the service.
 
-```xml
-<dependency>
-    <groupId>io.springfox</groupId>
-    <artifactId>springfox-swagger-ui</artifactId>
-    <version>2.5.2</version>
-</dependency>
+### 4. Cassandra User Click Tracking
 
-<dependency>
-    <groupId>io.springfox</groupId>
-    <artifactId>springfox-swagger2</artifactId>
-    <version>2.5.2</version>
-</dependency>
-```
+Records user clicks on shortened URLs in Cassandra, enabling detailed tracking and analysis of user engagement.
 
-Configure Swagger in `config/SwaggerConfig.java` and create a sample API in `controller/AppController.java`.
+## Setup Instructions
 
-Access Swagger UI at [http://localhost:8080/swagger-ui.html#](http://localhost:8080/swagger-ui.html#).
+1. **Hosts Configuration:** Modify the `/etc/hosts` file to include necessary local development entries.
 
-### 3. Redis Configuration
+2. **Swagger Configuration:** Update the `pom.xml` file to use Swagger version 2.5.2 for API documentation.
 
-Update `docker-compose.yml` to include a Redis service:
+3. **Redis Configuration:** Add a Redis service to the `docker-compose.yml` file for storing short URLs and related data.
 
-```yaml
-services:
-  redis:
-    image: redis
-    ports:
-      - 6379:6379
-    privileged: true
-```
+4. **MongoDB Configuration:** Integrate MongoDB by adding dependencies to the `pom.xml` file and including a MongoDB service in the `docker-compose.yml` file.
 
-Run Redis using:
+5. **Cassandra Configuration:** Add Cassandra dependencies to the `pom.xml` file and include a Cassandra service in the `docker-compose.yml` file.
 
-```bash
-docker-compose up -d
-docker ps
-docker exec -it [your container] /bin/bash 
-cd /usr/local/bin/
-redis-cli SET abc 1
-redis-cli GET abc
-redis-cli SETNX abc 1
-redis-cli SETNX abcd 1
-```
+6. **Application Configuration:** Update the `application.properties` file with the necessary configurations for Redis, MongoDB, and Cassandra.
 
-### 4. MongoDB Configuration
-
-Update `pom.xml` with MongoDB dependencies:
-
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-data-mongodb</artifactId>
-</dependency>
-
-<dependency>
-    <groupId>joda-time</groupId>
-    <artifactId>joda-time</artifactId>
-    <version>2.10.13</version>
-</dependency>
-```
-
-Update `docker-compose.yml` to include a MongoDB service:
-
-```yaml
-services:
-  mongo:
-    image: mongo:4.0
-    ports:
-      - 27017:27017
-    privileged: true
-```
-
-### 5. Cassandra Configuration
-
-Update `pom.xml` with Cassandra dependencies:
-
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-data-cassandra</artifactId>
-</dependency>
-```
-
-Update `docker-compose.yml` to include a Cassandra service:
-
-```yaml
-services:
-  cassandra:
-    image: "cassandra:3.11.9"
-    ports:
-      - "9042:9042"
-    environment:
-      - "MAX_HEAP_SIZE=256M"
-      - "HEAP_NEWSIZE=128M"
-```
-
-Run the following Cassandra CQL command:
-
-```cql
-CREATE KEYSPACE tiny_keyspace
-WITH replication = {'class':'SimpleStrategy', 'replication_factor' : 1};
-```
-
-### 6. Application Configuration
-
-Update `application.properties` with respective configurations for Redis, MongoDB, and Cassandra.
-
-### 7. Run the Application
-
-Run the application and access the various functionalities provided by the TinyURL service, including URL shortening, analytics logging, and user clicks.
+7. **Run the Application:** Start the application to explore and use the various features of the TinyURL service.
 
