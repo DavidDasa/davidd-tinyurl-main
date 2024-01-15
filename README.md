@@ -1,62 +1,48 @@
-# tinyurl
+# README for TinyURL Project
 
+This project demonstrates the implementation of a URL shortening service (TinyURL) using Spring Boot, Redis, MongoDB, and Cassandra. The system is designed to generate short URLs, store them in Redis, log analytics in MongoDB, and record user clicks in Cassandra.
+
+## Setup
+
+### 1. Hosts Configuration
+
+Edit the `/etc/hosts` file to include the following entries:
+
+```bash
 sudo vi /etc/hosts
-```
+
 127.0.0.1 cassandra
 127.0.0.1 redis
 127.0.0.1 mongo
 ```
-### swagger
-pom.xml
-<br>
-<version>   </version> -> <version>2.5.2</version>
-```
-		<dependency>
-			<groupId>io.springfox</groupId>
-			<artifactId>springfox-swagger-ui</artifactId>
-			<version>2.6.1</version>
-		</dependency><!-- https://mvnrepository.com/artifact/io.springfox/springfox-swagger2 -->
-		<dependency>
-			<groupId>io.springfox</groupId>
-			<artifactId>springfox-swagger2</artifactId>
-			<version>2.6.1</version>
-		</dependency>
+
+### 2. Swagger Configuration
+
+Update the `pom.xml` file to use Swagger version 2.5.2:
+
+```xml
+<dependency>
+    <groupId>io.springfox</groupId>
+    <artifactId>springfox-swagger-ui</artifactId>
+    <version>2.5.2</version>
+</dependency>
+
+<dependency>
+    <groupId>io.springfox</groupId>
+    <artifactId>springfox-swagger2</artifactId>
+    <version>2.5.2</version>
+</dependency>
 ```
 
-config/SwaggerConfig.java
-```java
-@Configuration
-@EnableSwagger2
-public class SwaggerConfig {
-    @Bean
-    public Docket api() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .select()
-                .apis(RequestHandlerSelectors.any())
-                .paths(PathSelectors.any())
-                .build();
-    }
-}
-```
-controller/AppController.java
-```java
-@RestController
-@RequestMapping("/api")
-public class AppController {
+Configure Swagger in `config/SwaggerConfig.java` and create a sample API in `controller/AppController.java`.
 
-    @RequestMapping(value = "/hello", method = RequestMethod.GET)
-    public String hello(@RequestParam String tiny) {
-        return "hello";
-    }
-}
-```
-http://localhost:8080/swagger-ui.html#
-<br>
-commit - with swagger
-<br>
-docker-compose.yml
-```
-version: "3"
+Access Swagger UI at [http://localhost:8080/swagger-ui.html#](http://localhost:8080/swagger-ui.html#).
+
+### 3. Redis Configuration
+
+Update `docker-compose.yml` to include a Redis service:
+
+```yaml
 services:
   redis:
     image: redis
@@ -64,8 +50,11 @@ services:
       - 6379:6379
     privileged: true
 ```
+
+Run Redis using:
+
+```bash
 docker-compose up -d
-```
 docker ps
 docker exec -it [your container] /bin/bash 
 cd /usr/local/bin/
@@ -74,196 +63,50 @@ redis-cli GET abc
 redis-cli SETNX abc 1
 redis-cli SETNX abcd 1
 ```
-pom.xml
-```
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-redis</artifactId>
-		</dependency>
-```
-application.properties
-```
-spring.redis.host=redis
-spring.redis.port=6379
 
-spring.redis.pool.max-active=8  
-spring.redis.pool.max-wait=-1  
-spring.redis.pool.max-idle=8  
-spring.redis.pool.min-idle=0
-```
-controller/AppController.java
-```
-    @Autowired
-    Redis redis;
+### 4. MongoDB Configuration
 
-    @RequestMapping(value = "/hello", method = RequestMethod.GET)
-    public Boolean hello(@RequestParam String key) {
-        System.out.println(redis.get(key).toString());
-        return redis.set(key,key);
-    }
+Update `pom.xml` with MongoDB dependencies:
 
-```
-commit - with redis
-<br>
-model/NewTinyRequest.java
-```java
-public class NewTinyRequest {
-    private  String longUrl;
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-mongodb</artifactId>
+</dependency>
 
-    public String getLongUrl() {
-        return longUrl;
-    }
-}
+<dependency>
+    <groupId>joda-time</groupId>
+    <artifactId>joda-time</artifactId>
+    <version>2.10.13</version>
+</dependency>
 ```
-application.properties
-```
-base.url = http://localhost:8080/
-```
-controller/AppController.java
-```
-    @Autowired
-    ObjectMapper om;
-    @Value("${base.url}")
-    String baseUrl;
 
-    @RequestMapping(value = "/tiny", method = RequestMethod.POST)
-    public String generate(@RequestBody NewTinyRequest request) throws JsonProcessingException {
-        String tinyCode = generateTinyCode();
-        int i = 0;
-        while (!redis.set(tinyCode, om.writeValueAsString(request)) && i < MAX_RETRIES) {
-            tinyCode = generateTinyCode();
-            i++;
-        }
-        if (i == MAX_RETRIES) throw new RuntimeException("SPACE IS FULL");
-        return baseUrl + tinyCode + "/";
-    }
+Update `docker-compose.yml` to include a MongoDB service:
 
-    @RequestMapping(value = "/{tiny}/", method = RequestMethod.GET)
-    public ModelAndView getTiny(@PathVariable String tiny) throws JsonProcessingException {
-        System.out.println("getRequest for tiny: " + tiny);
-        Object tinyRequestStr = redis.get(tiny);
-        NewTinyRequest tinyRequest = om.readValue(tinyRequestStr.toString(),NewTinyRequest.class);
-        if (tinyRequest.getLongUrl() != null) {
-            return new ModelAndView("redirect:" + tinyRequest.getLongUrl());
-        } else {
-            throw new RuntimeException(tiny + " not found");
-        }
-    }
-    private String generateTinyCode() {
-        String charPool = "ABCDEFHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        StringBuilder res = new StringBuilder();
-        for (int i = 0; i < TINY_LENGTH; i++) {
-            res.append(charPool.charAt(random.nextInt(charPool.length())));
-        }
-        return res.toString();
-    }
-```
-commit - with redirect
-<br>
-pom.xml
-```
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-mongodb</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>joda-time</groupId>
-			<artifactId>joda-time</artifactId>
-			<version>2.10.13</version>
-		</dependency>
-
-
-```
-docker-compose.yml
-```
+```yaml
+services:
   mongo:
     image: mongo:4.0
     ports:
       - 27017:27017
     privileged: true
 ```
-application.properties
+
+### 5. Cassandra Configuration
+
+Update `pom.xml` with Cassandra dependencies:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-cassandra</artifactId>
+</dependency>
 ```
-spring.data.mongodb.uri=mongodb://localhost:27017/tinydb
-```
-model/newTinyRequest
-```java
-    private  String userName;
 
-    public String getUserName() {
-        return userName;
-    }
-```
-apply patch - mongo
-<br>
-controller/AppController.java
-```java
-    @Autowired
-    private UserRepository userRepository;
+Update `docker-compose.yml` to include a Cassandra service:
 
-    @Autowired
-    private MongoTemplate mongoTemplate;
-
-    @RequestMapping(value = "/user", method = RequestMethod.POST)
-    public User createUser(@RequestParam String name) {
-        User user = anUser().withName(name).build();
-        user = userRepository.insert(user);
-        return user;
-    }
-
-    @RequestMapping(value = "/user/{name}", method = RequestMethod.GET)
-    public User getUser(@RequestParam String name) {
-        User user = userRepository.findFirstByName(name);
-        return user;
-    }
-
-    private void incrementMongoField(String userName, String key){
-        Query query = Query.query(Criteria.where("name").is(userName));
-        Update update = new Update().inc(key, 1);
-        mongoTemplate.updateFirst(query, update, "users");
-    }
-
-
-    @RequestMapping(value = "/tiny", method = RequestMethod.POST)
-    public String generate(@RequestBody NewTinyRequest request) throws JsonProcessingException {
-        String tinyCode = generateTinyCode();
-        int i = 0;
-        while (!redis.set(tinyCode, om.writeValueAsString(request)) && i < MAX_RETRIES) {
-            tinyCode = generateTinyCode();
-            i++;
-        }
-        if (i == MAX_RETRIES) throw new RuntimeException("SPACE IS FULL");
-        return baseUrl + tinyCode + "/";
-    }
-
-    @RequestMapping(value = "/{tiny}/", method = RequestMethod.GET)
-    public ModelAndView getTiny(@PathVariable String tiny) throws JsonProcessingException {
-        Object tinyRequestStr = redis.get(tiny);
-        NewTinyRequest tinyRequest = om.readValue(tinyRequestStr.toString(),NewTinyRequest.class);
-        if (tinyRequest.getLongUrl() != null) {
-            String userName = tinyRequest.getUserName();
-            if ( userName != null) {
-                incrementMongoField(userName, "allUrlClicks");
-                incrementMongoField(userName,
-                        "shorts."  + tiny + ".clicks." + getCurMonth());
-            }
-            return new ModelAndView("redirect:" + tinyRequest.getLongUrl());
-        } else {
-            throw new RuntimeException(tiny + " not found");
-        }
-    }
-```
-commit - with mongo
-pom.xml
-```
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-cassandra</artifactId>
-		</dependency>
-```
-docker-compose.yml
-```
+```yaml
+services:
   cassandra:
     image: "cassandra:3.11.9"
     ports:
@@ -272,36 +115,19 @@ docker-compose.yml
       - "MAX_HEAP_SIZE=256M"
       - "HEAP_NEWSIZE=128M"
 ```
-run
-```
+
+Run the following Cassandra CQL command:
+
+```cql
 CREATE KEYSPACE tiny_keyspace
 WITH replication = {'class':'SimpleStrategy', 'replication_factor' : 1};
 ```
-application.properties
-```
-spring.data.cassandra.keyspace-name=tiny_keyspace
-spring.data.cassandra.contact-points=cassandra
-spring.data.cassandra.port=9042
-spring.data.cassandra.schema-action=create_if_not_exists
-```
-apply patch - cassandra.patch
-<br>
-controller/AppController.java
-```java
-    @Autowired
-    private UserClickRepository userClickRepository;
 
-    @RequestMapping(value = "/user/{name}/clicks", method = RequestMethod.GET)
-    public List<UserClickOut> getUserClicks(@RequestParam String name) {
-        var userClicks = createStreamFromIterator( userClickRepository.findByUserName(name).iterator())
-                .map(userClick -> UserClickOut.of(userClick))
-                .collect(Collectors.toList());
-        return userClicks;
-    }
+### 6. Application Configuration
 
-        userClickRepository.save(anUserClick().userClickKey(anUserClickKey().withUserName(userName).withClickTime(new Date()).build())
-        .tiny(tiny).longUrl(tinyRequest.getLongUrl()).build());
-```
-commit - with cassandra
+Update `application.properties` with respective configurations for Redis, MongoDB, and Cassandra.
 
+### 7. Run the Application
+
+Run the application and access the various functionalities provided by the TinyURL service, including URL shortening, analytics logging, and user clicks.
 
